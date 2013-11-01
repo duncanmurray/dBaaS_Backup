@@ -124,15 +124,14 @@ def main():
 
     # Create a new backup 
     try:
-        rootLogger.info("Creating backup of '%s'" % (args.instance))
+        rootLogger.info("Creating backup of '%s'." % (mycdb.name))
         new_backup = mycdb.create_backup(args.backup + '-' + datetime.datetime.now().strftime("%y%m%d%H%M"), description="Created on " + datetime.datetime.now().strftime("%Y-%b-%d-%H:%M"))
-        rootLogger.info("Successful backup of '%s' named '%s'" % (args.instance, new_backup.name))
     except pex.ClientException:
         type, value, traceback = sys.exc_info()
         rootLogger.critical(value.message)
         exit(4)
 
-    # Put our backups in a list
+    # Put our current backups in a list
     backups = []
     for backup in mycdb.list_backups():
         if backup.name.startswith(args.backup) and backup.name[10:].isnumeric:
@@ -142,9 +141,9 @@ def main():
     backups.sort(key=lambda backup: backup.created, reverse=True)
 
     # Print our current backups
-    rootLogger.info("Current backups below")
+    rootLogger.info("Current backups of '%s' below:" % (mycdb.name))
     for backup in backups:
-        rootLogger.info("Name: '%s' Created '%s'" % (backup.name, backup.created))
+        rootLogger.info("Name: '%s' Created on '%s'" % (backup.name, backup.created))
 
     # Check if backups need to be deleted
     if len(backups) > args.number:
@@ -153,9 +152,16 @@ def main():
         # Delete oldest backups if current backups > target backups
         for backup in backups[args.number:]:
             # Warn use of backup being deleted
-            rootLogger.warning("Deleting Name: '%s' Created '%s'" % (backup.name, backup.created))
+            #rootLogger.warning("Deleting Name: '%s' Created '%s'" % (backup.name, backup.created))
             # Delete backup (need an exception here)
-            backup.delete()
+            try:
+                rootLogger.warning("The below backups will be deleted.")
+                rootLogger.warning("Name: '%s' Created on '%s'." % (backup.name, backup.created))
+                backup.delete()
+            except pex.ClientException:
+                type, value, traceback = sys.exc_info()
+                rootLogger.critical(value.message)
+                exit(5)
             # Wait until the instance is active
             pyrax.utils.wait_for_build(mycdb,"status", "ACTIVE", interval=1, attempts=30)
        
