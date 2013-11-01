@@ -21,6 +21,6 @@ optional arguments:
                         The location of your pyrax configuration file
   -r REGION, --region REGION
                         Region where your lsyncd configuration group is
-                        (defaults to 'LON') [ORD, DFW, LON, SYD, IAD]
+                        (defaults to 'LON') [ORD, DFW, LON, SYD, IAD, HKG]
   -v, --verbose         Turn on debug verbosity
 ```
