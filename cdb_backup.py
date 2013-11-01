@@ -151,9 +151,6 @@ def main():
         rootLogger.warning("There are '%i' backups. Need to delete '%i'." % (len(backups), len(backups) - args.number))
         # Delete oldest backups if current backups > target backups
         for backup in backups[args.number:]:
-            # Warn use of backup being deleted
-            #rootLogger.warning("Deleting Name: '%s' Created '%s'" % (backup.name, backup.created))
-            # Delete backup (need an exception here)
             try:
                 rootLogger.warning("The below backups will be deleted.")
                 rootLogger.warning("Name: '%s' Created on '%s'." % (backup.name, backup.created))
