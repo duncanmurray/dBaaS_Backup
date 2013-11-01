@@ -2,7 +2,7 @@
 
 ##############################################################################
 #                                                                            #          
-# A script to backuo your Rackspace cloud database Instance to your cloud    #
+# A script to backup your Rackspace cloud database Instance to your cloud    #
 # files account. https://github.com/duncanmurray/DBaaS_Backup                #
 #                                                                            #
 #                        Author: Duncan Murray 2013                          #
