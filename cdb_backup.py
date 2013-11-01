@@ -21,6 +21,7 @@
 #                                                                            # 
 ##############################################################################      
 
+import sys
 import os
 import pyrax
 import uuid
@@ -121,11 +122,22 @@ def main():
         rootLogger.critical("No instances found matching '%s'" % (args.instance))
         exit(3)
 
-    # Create a new backup
-    new_backup = mycdb.create_backup(args.backup + '-' + datetime.datetime.now().strftime("%y%m%d%H%M"), description="Created on " + datetime.datetime.now().strftime("%y%m%d%H%M"))
+    # Create a new backup 
+    try:
+        rootLogger.info("Creating backup of '%s'" % (args.instance))
+        new_backup = mycdb.create_backup(args.backup + '-' + datetime.datetime.now().strftime("%y%m%d%H%M"), description="Created on " + datetime.datetime.now().strftime("%Y-%b-%d-%H:%M"))
+        rootLogger.info("Successful backup of '%s' named '%s'" % (args.instance, new_backup.name))
+    except pex.ClientException:
+        type, value, traceback = sys.exc_info()
+        rootLogger.critical(value.message)
+        exit(4)
 
     # Put our backups in a list
-    backups = mycdb.list_backups()
+    backups = []
+    for backup in mycdb.list_backups():
+        if backup.name.startswith(args.backup) and backup.name[10:].isnumeric:
+            backups.append(backup)
+            
     # Sort out backups by date (this is probably not a very reliable way)
     backups.sort(key=lambda backup: backup.created, reverse=True)
 
@@ -142,7 +154,7 @@ def main():
         for backup in backups[args.number:]:
             # Warn use of backup being deleted
             rootLogger.warning("Deleting Name: '%s' Created '%s'" % (backup.name, backup.created))
-            # Delete backup
+            # Delete backup (need an exception here)
             backup.delete()
             # Wait until the instance is active
             pyrax.utils.wait_for_build(mycdb,"status", "ACTIVE", interval=1, attempts=30)
