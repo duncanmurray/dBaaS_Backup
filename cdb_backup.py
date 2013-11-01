@@ -57,7 +57,7 @@ def main():
     parser.add_argument("-r", "--region", action="store", required=False,
                         metavar="REGION", type=str,
                         help=("Region where your lsyncd configuration group is (defaults"
-                              " to 'LON') [ORD, DFW, LON, SYD, IAD]"), 
+                              " to 'LON') [ORD, DFW, LON, SYD, IAD, HKG]"), 
                         choices=["ORD", "DFW", "LON", "SYD", "IAD", "HKG"],
                         default="LON")
     parser.add_argument("-v", "--verbose", action="store_true", required=False,
