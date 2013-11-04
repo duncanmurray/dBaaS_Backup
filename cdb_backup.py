@@ -27,8 +27,8 @@ import pyrax
 import uuid
 import logging
 import argparse
-from pyrax import exceptions as pex
 import datetime
+from pyrax import exceptions as pex
 
 # Set default location of pyrax configuration file
 CREDFILE = "~/.rackspace_cloud_credentials"
@@ -46,7 +46,7 @@ def main():
                         metavar="NUMBER", type=int,
                         help=("The number of backups to keep matching the "
                               "provided backup and and UUID. To override "
-                              "use 0. (Defaults to 7)"),
+                              "use 0. Defaults to 7)"),
                         default=7)               
     parser.add_argument("-b", "--backup", action="store", required=True,
                         metavar="BACKUP", type=str,
@@ -59,17 +59,19 @@ def main():
                               "set it will default to the creation date."))
     parser.add_argument("-c", "--credfile", action="store", required=False,
                         metavar="CREDENTIALS_FILE", type=str,
-                        help=("The location of your pyrax configuration file."),
+                        help=("The location of your pyrax configuration file. "
+                              "Defaults to '%s'." % (CREDFILE)),
                         default=CREDFILE)
     parser.add_argument("-p", "--logdirectory", action="store", required=False,
                         metavar="LOG_DIRECTORY", type=str,
                         help=("The directory to create log files in. Defaults "
-                              "to '/var/log/'."),
+                              "to '%s'." % (LOGPATH)),
                         default=LOGPATH)
     parser.add_argument("-r", "--region", action="store", required=False,
                         metavar="REGION", type=str,
-                        help=("The region where you dBaaS instance is (defaults"
-                              " to 'LON') [ORD, DFW, LON, SYD, IAD, HKG]"), 
+                        help=("The region where you dBaaS instance is located. "
+                              "Default to 'LON'. "
+                              "Possible [ORD, DFW, LON, SYD, IAD, HKG]"),
                         choices=["ORD", "DFW", "LON", "SYD", "IAD", "HKG"],
                         default="LON")
     parser.add_argument("-v", "--verbose", action="store_true", required=False,
@@ -89,7 +91,7 @@ def main():
     # Configure logging to console
     consoleHandler = logging.StreamHandler()
     consoleHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(consoleHandler)   
+    rootLogger.addHandler(consoleHandler)
     # Configure logging to file
     try:
         fileHandler = logging.FileHandler("{0}/{1}.log".format(args.logdirectory, os.path.basename(__file__)))
@@ -97,6 +99,7 @@ def main():
         rootLogger.addHandler(fileHandler)
     except IOError:
         rootLogger.critical("Unable to write to log file directory '%s'." % (args.logdirectory))
+        rootLogger.debug("Exiting with code 1")
         exit(1)
 
     # Define the authentication credentials file location and request that
@@ -118,9 +121,10 @@ def main():
     # Exit if authentication fails
     except pex.AuthenticationFailed:
         rootLogger.critical("Authentication failed")
-        rootLogger.info("%s", """Please check and confirm that the API username, 
+        rootLogger.info("%s", """Please check and confirm that the API username,
                                      key, and region are in place and correct."""
                        )
+        rootLogger.debug("Exiting with code 2")
         exit(2)
     # Exit if file does not exist
     except pex.FileNotFound:
@@ -130,6 +134,7 @@ def main():
                                  username = myuseername
                                  api_key = 01sdf444g3ffgskskeoek0349"""
                        )
+        rootLogger.debug("Exiting with code 3")
         exit(3)
 
     # Shorten the call to cloud databases
@@ -140,9 +145,10 @@ def main():
         mycdb = cdb.find(id=args.instance)
     except pex.NotFound:
         rootLogger.critical("No instances found matching '%s'" % (args.instance))
+        rootLogger.debug("Exiting with code 4")
         exit(4)
 
-    # Create a new backup 
+    # Create a new backup
     if args.description:
         description = args.description
     else:
@@ -154,6 +160,7 @@ def main():
     except pex.ClientException:
         type, value, traceback = sys.exc_info()
         rootLogger.critical(value.message)
+        rootLogger.debug("Exiting with code 5")
         exit(5)
 
     # Put our current backups in a list
@@ -183,11 +190,22 @@ def main():
             except pex.ClientException:
                 type, value, traceback = sys.exc_info()
                 rootLogger.critical(value.message)
+                rootLogger.debug("Exiting with code 6")
                 exit(6)
+
             # Wait until the instance is active
             pyrax.utils.wait_for_build(mycdb,"status", "ACTIVE", interval=1, attempts=30)
-       
+    
+    rootLogger.debug("Exiting with code 0")
+    exit(0)
+
+#if __name__ == '__main__':
+#    main()
 
 # Run the main program
 if __name__ == '__main__':
-    main()
+    try:    
+        main()
+    except SystemExit as ecode:
+#        print "exit %i" % (ecode.args[0])
+        exit(ecode.args[0])
