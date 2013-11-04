@@ -32,6 +32,8 @@ import datetime
 
 # Set default location of pyrax configuration file
 CREDFILE = "~/.rackspace_cloud_credentials"
+# Set the default location of log files
+LOGPATH = "/var/log/"
 
 def main():
 
@@ -39,24 +41,34 @@ def main():
     parser = argparse.ArgumentParser(description=("Backup your Rackspace cloud database instance"))
     parser.add_argument("-i", "--instance", action="store", required=True,
                         metavar="INSTANCE", type=str,
-                        help=("The UUID of your cloud database instance"))
+                        help=("The UUID of your cloud database instance."))
     parser.add_argument("-n", "--number", action="store", required=False,
                         metavar="NUMBER", type=int,
-                        help=("The number of backups to keep. (Defaults to 7)"),
+                        help=("The number of backups to keep matching the "
+                              "provided backup and and UUID. To override "
+                              "use 0. (Defaults to 7)"),
                         default=7)               
     parser.add_argument("-b", "--backup", action="store", required=True,
                         metavar="BACKUP", type=str,
-                        help=("The identifying name of your backup"))
+                        help=("The identifying name of the backup set. The "
+                              "backup name along with UUID will determine what "
+                              "backups if any to delete."))
     parser.add_argument("-d", "--description", action="store", required=False,
                         metavar="DESCRIPTION", type=str,
-                        help=("A short description of the backup"))
+                        help=("A short description of the backup. If none is "
+                              "set it will default to the creation date."))
     parser.add_argument("-c", "--credfile", action="store", required=False,
                         metavar="CREDENTIALS_FILE", type=str,
-                        help=("The location of your pyrax configuration file"),
+                        help=("The location of your pyrax configuration file."),
                         default=CREDFILE)
+    parser.add_argument("-p", "--logdirectory", action="store", required=False,
+                        metavar="LOG_DIRECTORY", type=str,
+                        help=("The directory to create log files in. Defaults "
+                              "to '/var/log/'."),
+                        default=LOGPATH)
     parser.add_argument("-r", "--region", action="store", required=False,
                         metavar="REGION", type=str,
-                        help=("Region where your lsyncd configuration group is (defaults"
+                        help=("The region where you dBaaS instance is (defaults"
                               " to 'LON') [ORD, DFW, LON, SYD, IAD, HKG]"), 
                         choices=["ORD", "DFW", "LON", "SYD", "IAD", "HKG"],
                         default="LON")
@@ -78,6 +90,14 @@ def main():
     consoleHandler = logging.StreamHandler()
     consoleHandler.setFormatter(logFormatter)
     rootLogger.addHandler(consoleHandler)   
+    # Configure logging to file
+    try:
+        fileHandler = logging.FileHandler("{0}/{1}.log".format(args.logdirectory, os.path.basename(__file__)))
+        fileHandler.setFormatter(logFormatter)
+        rootLogger.addHandler(fileHandler)
+    except IOError:
+        rootLogger.critical("Unable to write to log file directory '%s'." % (args.logdirectory))
+        exit(1)
 
     # Define the authentication credentials file location and request that
     # pyrax makes use of it. If not found, let the client/user know about it.
@@ -101,7 +121,7 @@ def main():
         rootLogger.info("%s", """Please check and confirm that the API username, 
                                      key, and region are in place and correct."""
                        )
-        exit(1)
+        exit(2)
     # Exit if file does not exist
     except pex.FileNotFound:
         rootLogger.critical("Credentials file '%s' not found" % (creds_file))
@@ -110,7 +130,7 @@ def main():
                                  username = myuseername
                                  api_key = 01sdf444g3ffgskskeoek0349"""
                        )
-        exit(2)
+        exit(3)
 
     # Shorten the call to cloud databases
     cdb = pyrax.cloud_databases
@@ -120,16 +140,21 @@ def main():
         mycdb = cdb.find(id=args.instance)
     except pex.NotFound:
         rootLogger.critical("No instances found matching '%s'" % (args.instance))
-        exit(3)
+        exit(4)
 
     # Create a new backup 
+    if args.description:
+        description = args.description
+    else:
+        description = "Created on " + datetime.datetime.now().strftime("%Y-%b-%d-%H:%M")
+    
     try:
         rootLogger.info("Creating backup of '%s'." % (mycdb.name))
-        new_backup = mycdb.create_backup(args.backup + '-' + datetime.datetime.now().strftime("%y%m%d%H%M"), description="Created on " + datetime.datetime.now().strftime("%Y-%b-%d-%H:%M"))
+        new_backup = mycdb.create_backup(args.backup + '-' + datetime.datetime.now().strftime("%y%m%d%H%M"), description=description)
     except pex.ClientException:
         type, value, traceback = sys.exc_info()
         rootLogger.critical(value.message)
-        exit(4)
+        exit(5)
 
     # Put our current backups in a list
     backups = []
@@ -146,7 +171,7 @@ def main():
         rootLogger.info("Name: '%s' Created on '%s'" % (backup.name, backup.created))
 
     # Check if backups need to be deleted
-    if len(backups) > args.number:
+    if len(backups) > args.number and args.number is not 0:
         # Warn of backups being deleted
         rootLogger.warning("There are '%i' backups. Need to delete '%i'." % (len(backups), len(backups) - args.number))
         # Delete oldest backups if current backups > target backups
@@ -158,7 +183,7 @@ def main():
             except pex.ClientException:
                 type, value, traceback = sys.exc_info()
                 rootLogger.critical(value.message)
-                exit(5)
+                exit(6)
             # Wait until the instance is active
             pyrax.utils.wait_for_build(mycdb,"status", "ACTIVE", interval=1, attempts=30)
        
