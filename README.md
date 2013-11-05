@@ -3,7 +3,8 @@ dBaaS_Backup
 
 ```
 usage: cdb_backup.py [-h] -i INSTANCE [-n NUMBER] -b BACKUP [-d DESCRIPTION]
-                     [-c CREDENTIALS_FILE] [-p LOG_DIRECTORY] [-r REGION] [-v]
+                     [-c CREDENTIALS_FILE] [-p LOG_DIRECTORY] [-r REGION]
+                     [-e EMAIL] [-v]
 
 Backup your Rackspace cloud database instance
 
@@ -13,7 +14,8 @@ optional arguments:
                         The UUID of your cloud database instance.
   -n NUMBER, --number NUMBER
                         The number of backups to keep matching the provided
-                        backup and and UUID. To override use 0. Defaults to 7)
+                        backup and and UUID. To store indefinately use '0'.
+                        Defaults to '7'
   -b BACKUP, --backup BACKUP
                         The identifying name of the backup set. The backup
                         name along with UUID will determine what backups if
@@ -31,5 +33,8 @@ optional arguments:
                         The region where you dBaaS instance is located.
                         Default to 'LON'. Possible [ORD, DFW, LON, SYD, IAD,
                         HKG]
+  -e EMAIL, --email EMAIL
+                        The email address to send notifications to. To send no
+                        email use '0'. Defaults to 'root@localhost'.
   -v, --verbose         Turn on debug verbosity
 ```
