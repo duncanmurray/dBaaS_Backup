@@ -125,7 +125,6 @@ try:
     rootLogger.addHandler(fileHandler)
 except IOError:
     rootLogger.critical("Unable to write to log file directory '%s'." % (args.logdirectory))
-    rootLogger.debug("Exiting with code 1")
     exit(1)
 
 '''
@@ -156,7 +155,6 @@ def main():
         rootLogger.info("%s", """Please check and confirm that the API username,
                                      key, and region are in place and correct."""
                        )
-        rootLogger.debug("Exiting with code 2")
         exit(2)
     # Exit if file does not exist
     except pex.FileNotFound:
@@ -166,7 +164,6 @@ def main():
                                  username = myuseername
                                  api_key = 01sdf444g3ffgskskeoek0349"""
                        )
-        rootLogger.debug("Exiting with code 3")
         exit(3)
 
     # Shorten the call to cloud databases
@@ -177,7 +174,6 @@ def main():
         mycdb = cdb.find(id=args.instance)
     except pex.NotFound:
         rootLogger.critical("No instances found matching '%s'" % (args.instance))
-        rootLogger.debug("Exiting with code 4")
         exit(4)
 
     # Create a new backup
@@ -188,11 +184,10 @@ def main():
     
     try:
         rootLogger.info("Creating backup of '%s'." % (mycdb.name))
-        #new_backup = mycdb.create_backup(args.backup + '-' + datetime.datetime.now().strftime("%y%m%d%H%M"), description=description)
+        new_backup = mycdb.create_backup(args.backup + '-' + datetime.datetime.now().strftime("%y%m%d%H%M"), description=description)
     except pex.ClientException:
         type, value, traceback = sys.exc_info()
         rootLogger.critical(value.message)
-        rootLogger.debug("Exiting with code 5")
         exit(5)
 
     # Put our current backups in a list
@@ -222,7 +217,6 @@ def main():
             except pex.ClientException:
                 type, value, traceback = sys.exc_info()
                 rootLogger.critical(value.message)
-                rootLogger.debug("Exiting with code 6")
                 exit(6)
 
             # Wait until the instance is active
@@ -232,17 +226,13 @@ def main():
 
 def email_notification(ecode):
     if ecode == 0:
-        msg = '''Backup of Rackspace Cloud Database %s 
-                 completed successfully at %s.''' % (args.instance, datetime.datetime.now())
+        msg = '''Backup of Rackspace Cloud Database %s completed successfully at %s.''' % (args.instance, datetime.datetime.now().strftime("%Y-%b-%d-%H:%M"))
         msg = MIMEText(msg)
         msg['Subject'] = "Backup of Rackspace Cloud Database SUCCESSFUL"
         msg['From'] = FROMEMAIL
         msg['To'] = args.email
     else:
-        msg = '''Backup of Rackspace Cloud Database %s
-                 failed at %s. Backup operation
-                 failed with exit code %s. Please check 
-                 %s/%s for more information.''' % (args.instance, datetime.datetime.now(), ecode, args.logdirectory, os.path.basename(__file__))
+        msg = '''Backup of Rackspace Cloud Database %s failed at %s. Backup operation failed with exit code %s. Please check %s%s for more information.''' % (args.instance, datetime.datetime.now().strftime("%Y-%b-%d-%H:%M"), ecode, args.logdirectory, os.path.basename(__file__))
         msg = MIMEText(msg)
         msg['Subject'] = "Backup of Rackspace Cloud Database FAILED"
         msg['From'] = FROMEMAIL
@@ -278,5 +268,4 @@ if __name__ == '__main__':
             rootLogger.info("Backup completed successfully.")
         else:
             rootLogger.critical("Backup failed with exit code %i" % (ecode.args[0]))
-        rootLogger.debug("exit %i" % (ecode.args[0]))
         exit(ecode.args[0])
